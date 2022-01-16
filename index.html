@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+
+
+    <video id="video" style="display:none" src="" autoplay height="400" width="600"></video>
+    <canvas id="canvas" height="400" width="600"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+    <script>
+        var video = document.getElementById("video");
+        var canvas = document.getElementById("canvas");
+        var context = canvas.getContext("2d");
+
+        let model;
+        var setupCamera = function () {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: 600,
+                        height: 400
+                    }, audio: false
+                }).then(function (stream) {
+                    video.srcObject = stream;
+                    video.play();
+
+                }).catch(function (err) {
+                    console.log("An error occured! " + err);
+                });
+            }
+            else {
+                console.log("getUserMedia not supported");
+            }
+        }
+
+        const detectFace = async () => {
+            const model = await blazeface.load();
+            const predictions = await model.estimateFaces(video, false);
+            console.log(predictions)
+            if (predictions.length > 0) {
+                context.drawImage(video, 0, 0, 600, 400);
+                predictions.forEach(prediction => {
+                    context.beginPath();
+                    context.lineWidth = "4";
+                    context.strokeStyle = "red";
+                    context.rect(
+                        prediction.topLeft[0],
+                        prediction.topLeft[1],
+                        prediction.bottomRight[0] - prediction.topLeft[0],
+                        prediction.bottomRight[1] - prediction.topLeft[1]
+                    );
+                    context.stroke();
+                    prediction.fillStyle = "blue";
+                    prediction.landmarks.forEach(landmark => {
+                        context.beginPath();
+                        context.lineWidth = "4";
+                        context.strokeStyle = "green";
+                        context.arc(landmark[0], landmark[1], 2, 0, 2 * Math.PI);
+                        context.stroke();
+                    })
+                });
+
+            }
+        }
+
+        setupCamera();
+
+        video.addEventListener('loadeddata', async () => {
+            model = await blazeface.load();
+            setInterval(() => {
+                detectFace();
+            }, 20);
+        });
+    </script>
+</body>
+
+</html>
